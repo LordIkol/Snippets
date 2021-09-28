@@ -34,3 +34,11 @@
       </MenuItem>
     </ContextMenu>
   </TextBox.ContextMenu>
+
+<materialDesign:Badged
+  Badge="{materialDesign:PackIcon Heart}"
+  BadgeColorZoneMode="Accent">
+  <Button>
+  LOVE
+</Button>
+</materialDesign:Badged>
