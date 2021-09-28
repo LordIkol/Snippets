@@ -21,3 +21,16 @@
       Content="THIRD" />
   </StackPanel>
 </materialDesign:ColorZone>
+
+
+<TextBox.ContextMenu>
+    <ContextMenu>
+      <MenuItem
+        Header="Hello World" />
+      <MenuItem
+        Header="Clickety Click">
+        <MenuItem
+          Header="Clackety Clack" />
+      </MenuItem>
+    </ContextMenu>
+  </TextBox.ContextMenu>
