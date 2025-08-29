@@ -9,3 +9,11 @@ addToTime(coalesce(item()?['Last'],'1900-01-01T00:00:00Z'), int(item()?['Months'
   "Key": "@{guid()}",
   "P": "@{item()}"
 }
+
+formatDateTime(
+  if(or(equals(item()?['Last'], null), equals(item()?['Last'], '')),
+     utcNow(),
+     addToTime(item()?['Last'], int(item()?['Months']), 'Month')
+  ),
+  'yyyy-MM-dd'
+)
