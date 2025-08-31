@@ -62,37 +62,35 @@ ClearCollect(
     colMyLinks,
     Sort(
         Filter(
-            Match_Member,
-            'Participant_Email'.'Participant' = varMe.'Participant'
+            Match_Member,                                  // or 'Match Members' if that's your data source name
+            'Participant_Email'.'Participant' = varMe.'Participant'   // GUID ↔ GUID
         ),
         'Created On',
         SortOrder.Descending
     )
 );
 
-// Flatten with partner + match info per row (no cross-column scoping issues)
+// Build a flat collection with partner + match info per row (no scoping conflicts)
 ClearCollect(
     colMyMatches,
     ForAll(
         colMyLinks As L,
         With(
             {
-                partnerLink: LookUp(
-                    Match_Member,
+                plink: LookUp(
+                    Match_Member,                          // or 'Match Members'
                     Match = L.Match &&
                     'Participant_Email'.'Participant' <> varMe.'Participant'
                 ),
-                partnerRec: If(!IsBlank(partnerLink), partnerLink.'Participant_Email')
+                prow: If(!IsBlank(plink), plink.'Participant_Email')    // concrete Participant record
             },
             {
                 CreatedOn: L.'Created On',
                 MatchRow:  L.Match,
                 MatchID:   L.Match.'ID (Primary)',
-                MyLink:    L,
-                PartnerLink: partnerLink,
-                PartnerRow:  partnerRec
+                // If you don't need the raw link, don't include it in the record:
+                PartnerRow: prow
             }
         )
     )
 );
-
