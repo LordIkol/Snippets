@@ -100,3 +100,12 @@ ThisItem.PartnerRow.'Participant_Name' & " ● " & ThisItem.PartnerRow.Location
 ThisItem.PartnerRow.'Participant_Name' & " ○ " & ThisItem.PartnerRow.Location
 ThisItem.PartnerRow.'Participant_Name' & " ▪ " & ThisItem.PartnerRow.Location
 
+
+Launch("mailto:someone@example.com?subject=Coffee%20Roulette&body=Hi%20there,%0A%0AThis%20is%20your%20match%20invite!")
+
+Launch(
+    "mailto:" & varLatestMatch.Partner.'Participant_Email (Primary)' &
+    "?subject=Coffee%20Roulette%20Match" &
+    "&body=Hi%20" & varLatestMatch.Partner.'Participant_Name'
+)
+
