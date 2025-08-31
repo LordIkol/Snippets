@@ -1,134 +1,55 @@
-// Participants table: display name for email is 'Participant_Email (Primary)'
-Set(
-    varMe,
-    LookUp(
-        Participants,
-        'Participant_Email (Primary)' = User().Email
-    )
-);
-
-
-// Build a single record with Match, my link, partner link, and partner participant
-Set(
-    varLatestMatch,
-    With(
-        {
-            myLastLink: First(
-                Sort(
-                    Filter('Match_Member', 'Participant_Email' = varMe),   // lookup→lookup
-                    'Created On',
-                    Descending
-                )
-            )
-        },
-        If(
-            IsBlank(myLastLink),
-            Blank(),
-            With(
-                {
-                    matchRow: myLastLink.'Match', // lookup to Match
-                    partnerLink: LookUp(
-                        'Match_Member',
-                        'Match' = matchRow &&
-                        'Participant_Email' <> varMe
-                    ),
-                    partnerRow: If(!IsBlank(partnerLink), partnerLink.'Participant_Email') // lookup to Participant
-                },
-                {
-                    // Nice, bindable shape
-                    MatchID: matchRow.'ID (Primary)',   // Match table’s primary name / autonumber
-                    Match: matchRow,                    // full Match record
-                    MyLink: myLastLink,                 // my Match_Member row
-                    PartnerLink: partnerLink,           // partner’s Match_Member row
-                    Partner: partnerRow                 // full Participant record
-                }
-            )
-        )
-    )
-);
-
-ClearCollect(
-    colMyMatches,
-    AddColumns(
-        Sort(
-            Filter('Match_Member', 'Participant_Email' = varMe),
-            'Created On',
-            Descending
-        ),
-        "MatchRow",    ThisRecord.'Match',
-        "PartnerLink", LookUp(
-                           'Match_Member',
-                           'Match' = ThisRecord.'Match' &&
-                           'Participant_Email' <> varMe
-                       ),
-        "PartnerRow",  If(!IsBlank(PartnerLink), PartnerLink.'Participant_Email')
-    )
-);
-
-
-// Resolve me (text email on Participants)
+// 0) Resolve me (Participant record)
 Set(
     varMe,
     LookUp(Participants, 'Participant_Email (Primary)' = User().Email)
 );
 
-Set(
-    varLatestMatch,
-    With(
-        {
-            // my most-recent Match_Member link
-            myLastLink:
-                First(
-                    Sort(
-                        Filter(
-                            Match_Member,
-                            'Participant_Email'.'Participant' = varMe.'Participant'   // ID ↔ ID
-                        ),
-                        'Created On',
-                        SortOrder.Descending
-                    )
-                )
-        },
-        If(
-            IsBlank(myLastLink),
-            Blank(),
-            With(
-                { matchRef: myLastLink.Match },   // lookup to Match
-                With(
-                    {
-                        // all other members in that same match (excl. me)
-                        partnerLinks:
-                            Filter(
-                                Match_Member,
-                                Match = matchRef &&
-                                'Participant_Email'.'Participant' <> varMe.'Participant'   // ID ↔ ID
-                            ),
-                        primaryPartnerLink:
-                            If(CountRows(partnerLinks) > 0, First(partnerLinks)),
+// 1) All my links, newest first
+ClearCollect(
+    colMyLinks,
+    Sort(
+        Filter(Match_Member, 'Participant_Email'.'Participant' = varMe.'Participant'), // ID↔ID
+        'Created On',
+        SortOrder.Descending
+    )
+);
 
-                        // materialize a concrete Participant row for safe field access
-                        partnerRec:
-                            If(
-                                !IsBlank(primaryPartnerLink),
-                                LookUp(
-                                    Participants,
-                                    'Participant' =
-                                        primaryPartnerLink.'Participant_Email'.'Participant'
-                                )
-                            )
-                    },
-                    {
-                        // final shaped record you can bind everywhere
-                        MatchID: matchRef.'ID (Primary)',
-                        Match: matchRef,
-                        MyLink: myLastLink,
-                        PartnerLink: primaryPartnerLink,
-                        Partner: partnerRec,                 // e.g. .Location, .Participant_Name, .Participant_Email (Primary)
-                        PartnerCount: CountRows(partnerLinks)
-                    }
-                )
-            )
+// 2) My latest link
+Set(varMyLastLink, If(CountRows(colMyLinks)>0, First(colMyLinks)));
+
+// 3) The Match record of that link
+Set(varMatchRef, If(!IsBlank(varMyLastLink), varMyLastLink.Match));
+
+// 4) Other members in that same match (excl. me) — supports duos or trios
+ClearCollect(
+    colPartnersInLastMatch,
+    If(
+        !IsBlank(varMatchRef),
+        Filter(
+            Match_Member,
+            Match = varMatchRef &&
+            'Participant_Email'.'Participant' <> varMe.'Participant'   // ID↔ID
         )
     )
 );
 
+// 5) Pick a primary partner (first) and materialize the Participant record
+Set(varPrimaryPartnerLink, If(CountRows(colPartnersInLastMatch)>0, First(colPartnersInLastMatch)));
+Set(varPartnerRec, If(!IsBlank(varPrimaryPartnerLink), varPrimaryPartnerLink.'Participant_Email'));
+
+// 6) Final shaped object you can bind anywhere
+Set(
+    varLatestMatch,
+    If(
+        IsBlank(varMyLastLink),
+        Blank(),
+        {
+            MatchID: varMatchRef.'ID (Primary)',
+            Match: varMatchRef,
+            MyLink: varMyLastLink,
+            PartnerLink: varPrimaryPartnerLink,
+            Partner: varPartnerRec,                 // e.g. .Location, .Participant_Name, .Participant_Email (Primary)
+            PartnerCount: CountRows(colPartnersInLastMatch)
+        }
+    )
+);
