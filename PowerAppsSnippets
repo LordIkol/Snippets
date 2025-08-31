@@ -1,43 +1,44 @@
-// 0) Resolve me (Participant record)
+// A) My newest Match_Member link (ID↔ID compare)
 Set(
-    varMe,
-    LookUp(Participants, 'Participant_Email (Primary)' = User().Email)
-);
-
-// 1) All my links, newest first
-ClearCollect(
-    colMyLinks,
-    Sort(
-        Filter(Match_Member, 'Participant_Email'.'Participant' = varMe.'Participant'), // ID↔ID
-        'Created On',
-        SortOrder.Descending
-    )
-);
-
-// 2) My latest link
-Set(varMyLastLink, If(CountRows(colMyLinks)>0, First(colMyLinks)));
-
-// 3) The Match record of that link
-Set(varMatchRef, If(!IsBlank(varMyLastLink), varMyLastLink.Match));
-
-// 4) Other members in that same match (excl. me) — supports duos or trios
-ClearCollect(
-    colPartnersInLastMatch,
+    varMyLastLink,
     If(
-        !IsBlank(varMatchRef),
-        Filter(
-            Match_Member,
-            Match = varMatchRef &&
-            'Participant_Email'.'Participant' <> varMe.'Participant'   // ID↔ID
+        !IsBlank(varMe),
+        First(
+            Sort(
+                Filter(
+                    Match_Member,
+                    'Participant_Email'.'Participant' = varMe.'Participant'   // compare GUID to GUID
+                ),
+                'Created On',
+                SortOrder.Descending
+            )
         )
     )
 );
 
-// 5) Pick a primary partner (first) and materialize the Participant record
-Set(varPrimaryPartnerLink, If(CountRows(colPartnersInLastMatch)>0, First(colPartnersInLastMatch)));
-Set(varPartnerRec, If(!IsBlank(varPrimaryPartnerLink), varPrimaryPartnerLink.'Participant_Email'));
+// B) The Match of that link
+Set(varMatchRef, If(!IsBlank(varMyLastLink), varMyLastLink.Match));
 
-// 6) Final shaped object you can bind anywhere
+// C) The other person’s link in the same match (duo => exactly one)
+Set(
+    varPartnerLink,
+    If(
+        !IsBlank(varMatchRef),
+        LookUp(
+            Match_Member,
+            Match = varMatchRef &&
+            'Participant_Email'.'Participant' <> varMe.'Participant'       // not me
+        )
+    )
+);
+
+// D) Materialize the Participant record for safe field access
+Set(
+    varPartner,
+    If(!IsBlank(varPartnerLink), varPartnerLink.'Participant_Email')
+);
+
+// E) Final shaped object
 Set(
     varLatestMatch,
     If(
@@ -47,9 +48,8 @@ Set(
             MatchID: varMatchRef.'ID (Primary)',
             Match: varMatchRef,
             MyLink: varMyLastLink,
-            PartnerLink: varPrimaryPartnerLink,
-            Partner: varPartnerRec,                 // e.g. .Location, .Participant_Name, .Participant_Email (Primary)
-            PartnerCount: CountRows(colPartnersInLastMatch)
+            PartnerLink: varPartnerLink,
+            Partner: varPartner  // -> .Location, .Participant_Name, .Participant_Email (Primary)
         }
     )
 );
