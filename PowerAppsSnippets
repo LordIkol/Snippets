@@ -65,3 +65,63 @@ ClearCollect(
     )
 );
 
+
+// Resolve me (text email on Participants)
+Set(
+    varMe,
+    LookUp(Participants, 'Participant_Email (Primary)' = User().Email)
+);
+
+// Build latest match object (robust + trio-safe)
+Set(
+    varLatestMatch,
+    With(
+        {
+            myLastLink: First(
+                Sort(
+                    Filter('Match_Member', 'Participant_Email' = varMe),   // lookup → lookup
+                    'Created On',
+                    Descending
+                )
+            )
+        },
+        If(
+            IsBlank(myLastLink),
+            Blank(),
+            With(
+                { matchRef: myLastLink.'Match' },                          // <-- lookup to Match
+                With(
+                    {
+                        // all other members of this same match (excl. me)
+                        partnerLinks: Filter(
+                            'Match_Member',
+                            'Match' = matchRef &&
+                            'Participant_Email' <> varMe
+                        ),
+                        primaryPartnerLink: If(CountRows(partnerLinks) > 0, First(partnerLinks)),
+
+                        // pull a concrete Participant record to avoid lazy network lookups
+                        partnerRec: If(
+                            !IsBlank(primaryPartnerLink),
+                            LookUp(
+                                Participants,
+                                'Participant_Email (Primary)' =
+                                    primaryPartnerLink.'Participant_Email'.'Participant_Email (Primary)'
+                            )
+                        )
+                    },
+                    {
+                        // final shaped record
+                        MatchID: matchRef.'ID (Primary)',
+                        Match: matchRef,
+                        MyLink: myLastLink,
+                        PartnerLink: primaryPartnerLink,
+                        Partner: partnerRec,                    // <-- safe to deref e.g. .Location
+                        PartnerCount: CountRows(partnerLinks)
+                    }
+                )
+            )
+        )
+    )
+);
+
