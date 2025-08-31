@@ -1,17 +1,21 @@
-// Find my Participants row
+// Participants table: display name for email is 'Participant_Email (Primary)'
 Set(
     varMe,
-    LookUp(Participants, 'Primary Email' = User().Email)
+    LookUp(
+        Participants,
+        'Participant_Email (Primary)' = User().Email
+    )
 );
 
-// Compute the latest link for me, the partner link, the match row, and the partner row
+
+// Build a single record with Match, my link, partner link, and partner participant
 Set(
     varLatestMatch,
     With(
         {
             myLastLink: First(
                 Sort(
-                    Filter(MatchLinks, 'Participant (Participants)' = varMe),
+                    Filter('Match_Member', 'Participant_Email' = varMe),   // lookup→lookup
                     'Created On',
                     Descending
                 )
@@ -22,66 +26,42 @@ Set(
             Blank(),
             With(
                 {
-                    sameMatchId: myLastLink.'Match (Matches)',
+                    matchRow: myLastLink.'Match', // lookup to Match
                     partnerLink: LookUp(
-                        MatchLinks,
-                        'Match (Matches)' = sameMatchId &&
-                        'Participant (Participants)' <> varMe
+                        'Match_Member',
+                        'Match' = matchRow &&
+                        'Participant_Email' <> varMe
                     ),
-                    matchRow: myLastLink.'Match (Matches)',
-                    partnerRow: If(
-                        !IsBlank(partnerLink),
-                        partnerLink.'Participant (Participants)'
-                    )
+                    partnerRow: If(!IsBlank(partnerLink), partnerLink.'Participant_Email') // lookup to Participant
                 },
                 {
-                    // Shape a neat record you can bind
-                    MatchID: matchRow.MatchID,
-                    Match: matchRow,
-                    MyLink: myLastLink,
-                    PartnerLink: partnerLink,
-                    Partner: partnerRow
+                    // Nice, bindable shape
+                    MatchID: matchRow.'ID (Primary)',   // Match table’s primary name / autonumber
+                    Match: matchRow,                    // full Match record
+                    MyLink: myLastLink,                 // my Match_Member row
+                    PartnerLink: partnerLink,           // partner’s Match_Member row
+                    Partner: partnerRow                 // full Participant record
                 }
             )
         )
     )
 );
 
-
 ClearCollect(
     colMyMatches,
     AddColumns(
         Sort(
-            Filter(MatchLinks, 'Participant (Participants)' = varMe),
+            Filter('Match_Member', 'Participant_Email' = varMe),
             'Created On',
             Descending
         ),
-        // Join the related rows (lightweight lookups)
-        "MatchRow",    ThisRecord.'Match (Matches)',
+        "MatchRow",    ThisRecord.'Match',
         "PartnerLink", LookUp(
-                           MatchLinks,
-                           'Match (Matches)' = ThisRecord.'Match (Matches)' &&
-                           'Participant (Participants)' <> varMe
+                           'Match_Member',
+                           'Match' = ThisRecord.'Match' &&
+                           'Participant_Email' <> varMe
                        ),
-        "PartnerRow",  If(!IsBlank(PartnerLink), PartnerLink.'Participant (Participants)')
+        "PartnerRow",  If(!IsBlank(PartnerLink), PartnerLink.'Participant_Email')
     )
 );
-
-
-ClearCollect(
-    colMyMatchesFlat,
-    ForAll(
-        colMyMatches As R,
-        {
-            MatchID: R.MatchRow.MatchID,
-            CreatedOn: R.'Created On',
-            MyRole: R.Role,
-            PartnerName: Coalesce(R.PartnerRow.'Full Name', "—"),
-            PartnerEmail: Coalesce(R.PartnerRow.'Primary Email', "—"),
-            MatchGuid: R.MatchRow // keep the lookup for drill-in
-        }
-    )
-);
-
-
 
