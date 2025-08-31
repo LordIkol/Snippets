@@ -53,3 +53,46 @@ Set(
         }
     )
 );
+
+------------------------------------------------------------------------------------------------------------------------------
+
+
+// Base: my links, newest first
+ClearCollect(
+    colMyLinks,
+    Sort(
+        Filter(
+            Match_Member,
+            'Participant_Email'.'Participant' = varMe.'Participant'
+        ),
+        'Created On',
+        SortOrder.Descending
+    )
+);
+
+// Flatten with partner + match info per row (no cross-column scoping issues)
+ClearCollect(
+    colMyMatches,
+    ForAll(
+        colMyLinks As L,
+        With(
+            {
+                partnerLink: LookUp(
+                    Match_Member,
+                    Match = L.Match &&
+                    'Participant_Email'.'Participant' <> varMe.'Participant'
+                ),
+                partnerRec: If(!IsBlank(partnerLink), partnerLink.'Participant_Email')
+            },
+            {
+                CreatedOn: L.'Created On',
+                MatchRow:  L.Match,
+                MatchID:   L.Match.'ID (Primary)',
+                MyLink:    L,
+                PartnerLink: partnerLink,
+                PartnerRow:  partnerRec
+            }
+        )
+    )
+);
+
