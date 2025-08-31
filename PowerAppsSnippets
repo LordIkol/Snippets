@@ -94,3 +94,9 @@ ClearCollect(
         )
     )
 );
+
+ThisItem.PartnerRow.'Participant_Name' & " • " & ThisItem.PartnerRow.Location
+ThisItem.PartnerRow.'Participant_Name' & " ● " & ThisItem.PartnerRow.Location
+ThisItem.PartnerRow.'Participant_Name' & " ○ " & ThisItem.PartnerRow.Location
+ThisItem.PartnerRow.'Participant_Name' & " ▪ " & ThisItem.PartnerRow.Location
+
