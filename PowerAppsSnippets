@@ -1,0 +1,87 @@
+// Find my Participants row
+Set(
+    varMe,
+    LookUp(Participants, 'Primary Email' = User().Email)
+);
+
+// Compute the latest link for me, the partner link, the match row, and the partner row
+Set(
+    varLatestMatch,
+    With(
+        {
+            myLastLink: First(
+                Sort(
+                    Filter(MatchLinks, 'Participant (Participants)' = varMe),
+                    'Created On',
+                    Descending
+                )
+            )
+        },
+        If(
+            IsBlank(myLastLink),
+            Blank(),
+            With(
+                {
+                    sameMatchId: myLastLink.'Match (Matches)',
+                    partnerLink: LookUp(
+                        MatchLinks,
+                        'Match (Matches)' = sameMatchId &&
+                        'Participant (Participants)' <> varMe
+                    ),
+                    matchRow: myLastLink.'Match (Matches)',
+                    partnerRow: If(
+                        !IsBlank(partnerLink),
+                        partnerLink.'Participant (Participants)'
+                    )
+                },
+                {
+                    // Shape a neat record you can bind
+                    MatchID: matchRow.MatchID,
+                    Match: matchRow,
+                    MyLink: myLastLink,
+                    PartnerLink: partnerLink,
+                    Partner: partnerRow
+                }
+            )
+        )
+    )
+);
+
+
+ClearCollect(
+    colMyMatches,
+    AddColumns(
+        Sort(
+            Filter(MatchLinks, 'Participant (Participants)' = varMe),
+            'Created On',
+            Descending
+        ),
+        // Join the related rows (lightweight lookups)
+        "MatchRow",    ThisRecord.'Match (Matches)',
+        "PartnerLink", LookUp(
+                           MatchLinks,
+                           'Match (Matches)' = ThisRecord.'Match (Matches)' &&
+                           'Participant (Participants)' <> varMe
+                       ),
+        "PartnerRow",  If(!IsBlank(PartnerLink), PartnerLink.'Participant (Participants)')
+    )
+);
+
+
+ClearCollect(
+    colMyMatchesFlat,
+    ForAll(
+        colMyMatches As R,
+        {
+            MatchID: R.MatchRow.MatchID,
+            CreatedOn: R.'Created On',
+            MyRole: R.Role,
+            PartnerName: Coalesce(R.PartnerRow.'Full Name', "—"),
+            PartnerEmail: Coalesce(R.PartnerRow.'Primary Email', "—"),
+            MatchGuid: R.MatchRow // keep the lookup for drill-in
+        }
+    )
+);
+
+
+
