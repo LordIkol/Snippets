@@ -203,14 +203,14 @@ Want me to drop in an **action-by-action list** you can mirror in your flow desi
 
 
 concat(
-  'Run timestamp: ', first(outputs('Compose'))?['RunTimestamp'], '\r\n',
-  'Total records to insert: ', string(first(outputs('Compose'))?['Total Records to Insert']), '\r\n',
-  'Errors: ', string(first(outputs('Compose'))?['Errors']), '\r\n\r\n',
+  'Run timestamp: ', first(outputs('Compose'))?['RunTimestamp'], decodeUriComponent('%0D%0A'),
+  'Total records to insert: ', string(first(outputs('Compose'))?['Total Records to Insert']), decodeUriComponent('%0D%0A'),
+  'Errors: ', string(first(outputs('Compose'))?['Errors']), decodeUriComponent('%0D%0A'), decodeUriComponent('%0D%0A'),
   if(
     equals(length(skip(outputs('Compose'),1)), 0),
     'No errors.',
     concat(
-      '--- Error details ---', '\r\n',
+      '------------------------------ Errorinfo ------------------------------', decodeUriComponent('%0D%0A'),
       replace(
         replace(
           replace(
@@ -219,21 +219,22 @@ concat(
                 replace(
                   replace(
                     string(skip(outputs('Compose'),1)),
-                    '[{', ''                      // trim leading bracket/brace
+                    '[{',''
                   ),
-                  '}]', ''                        // trim trailing brace/bracket
+                  '}]',''
                 ),
-                '},{', '§§'                       // mark object boundaries
+                '},{', concat(decodeUriComponent('%0D%0A'),decodeUriComponent('%0D%0A'),
+                              '------------------------------ Errorinfo ------------------------------',
+                              decodeUriComponent('%0D%0A'))
               ),
-              '{"ConsultationID":"', 'ConsultationID: ' // label ID
+              '{"ConsultationID":"','ConsultationID: '
             ),
-            '","Error":"', '\r\nError: '          // label error
+            '","Error":"', concat(decodeUriComponent('%0D%0A'),'Error: ')
           ),
-          '"}', ''                                // trim end quotes/braces
+          '"}',''
         ),
-        '"', ''                                   // remove any leftover quotes
-      ),
-      '§§', '\r\n\r\n'                            // turn boundaries into blank line
+        '"',''
+      )
     )
   )
 )
