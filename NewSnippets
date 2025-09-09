@@ -200,3 +200,41 @@ You now have:
 * Optional **triad** handling
 
 Want me to drop in an **action-by-action list** you can mirror in your flow designer (exact action names + nesting), or move on to **notification emails** with a ready-to-send template and dynamic tokens?
+
+
+concat(
+  'Run timestamp: ', first(outputs('Compose'))?['RunTimestamp'], '\r\n',
+  'Total records to insert: ', string(first(outputs('Compose'))?['Total Records to Insert']), '\r\n',
+  'Errors: ', string(first(outputs('Compose'))?['Errors']), '\r\n\r\n',
+  if(
+    equals(length(skip(outputs('Compose'),1)), 0),
+    'No errors.',
+    concat(
+      '--- Error details ---', '\r\n',
+      replace(
+        replace(
+          replace(
+            replace(
+              replace(
+                replace(
+                  replace(
+                    string(skip(outputs('Compose'),1)),
+                    '[{', ''                      // trim leading bracket/brace
+                  ),
+                  '}]', ''                        // trim trailing brace/bracket
+                ),
+                '},{', '§§'                       // mark object boundaries
+              ),
+              '{"ConsultationID":"', 'ConsultationID: ' // label ID
+            ),
+            '","Error":"', '\r\nError: '          // label error
+          ),
+          '"}', ''                                // trim end quotes/braces
+        ),
+        '"', ''                                   // remove any leftover quotes
+      ),
+      '§§', '\r\n\r\n'                            // turn boundaries into blank line
+    )
+  )
+)
+
