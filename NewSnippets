@@ -238,3 +238,43 @@ concat(
   )
 )
 
+
+
+
+---------------------------------------
+
+concat(
+  'Run timestamp: ', first(outputs('Compose'))?['RunTimestamp'], decodeUriComponent('%0D%0A'),
+  'Total records to insert: ', string(first(outputs('Compose'))?['Total Records to Insert']), decodeUriComponent('%0D%0A'),
+  'Errors: ', string(first(outputs('Compose'))?['Errors']), decodeUriComponent('%0D%0A'), decodeUriComponent('%0D%0A'),
+  if(
+    equals(length(skip(outputs('Compose'),1)), 0),
+    'No errors.',
+    concat(
+      '--- Error details ---', decodeUriComponent('%0D%0A'),
+      replace(
+        replace(
+          replace(
+            replace(
+              replace(
+                replace(
+                  replace(
+                    string(skip(outputs('Compose'),1)),
+                    '[{',''
+                  ),
+                  '}]',''
+                ),
+                '},{','§§'
+              ),
+              '{"ConsultationID":"','ConsultationID: '
+            ),
+            '","Error":"', concat(decodeUriComponent('%0D%0A'),'Error: ')
+          ),
+          '"}',''
+        ),
+        '"',''
+      ),
+      '§§', concat(decodeUriComponent('%0D%0A'),decodeUriComponent('%0D%0A'))
+    )
+  )
+)
