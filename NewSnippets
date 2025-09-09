@@ -22,14 +22,19 @@ concat(
             '{"ConsultationID":"',
             concat('------------------------------ Errorinfo ------------------------------', decodeUriComponent('%0D%0A'), 'ConsultationID: ')
           ),
-          '","Error":"',
-          concat(decodeUriComponent('%0D%0A'),'Error: ')
+          '","Error":"', concat(decodeUriComponent('%0D%0A'),'Error: ')
         ),
         '"}',''
       ),
       '"',''
-    ),
-    '§§SEP§§',
-    concat(decodeUriComponent('%0D%0A'),decodeUriComponent('%0D%0A'),'------------------------------ Errorinfo ------------------------------',decodeUriComponent('%0D%0A'))
+    ,
+      '§§SEP§§',
+      concat(
+        decodeUriComponent('%0D%0A'),
+        decodeUriComponent('%0D%0A'),
+        '------------------------------ Errorinfo ------------------------------',
+        decodeUriComponent('%0D%0A')
+      )
+    )
   )
 )
