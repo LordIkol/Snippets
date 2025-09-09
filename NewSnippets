@@ -242,8 +242,6 @@ concat(
 
 
 
----------------------------------------
-
 concat(
   'Run timestamp: ', first(outputs('Compose'))?['RunTimestamp'], decodeUriComponent('%0D%0A'),
   'Total records to insert: ', string(first(outputs('Compose'))?['Total Records to Insert']), decodeUriComponent('%0D%0A'),
@@ -251,31 +249,43 @@ concat(
   if(
     equals(length(skip(outputs('Compose'),1)), 0),
     'No errors.',
-    concat(
-      '--- Error details ---', decodeUriComponent('%0D%0A'),
+    replace(
       replace(
         replace(
           replace(
             replace(
               replace(
                 replace(
-                  replace(
-                    string(skip(outputs('Compose'),1)),
-                    '[{',''
-                  ),
-                  '}]',''
+                  string(skip(outputs('Compose'),1)),
+                  // 1) strip array brackets
+                  '[{','{'
                 ),
-                '},{','§§'
+                '}]','}'
               ),
-              '{"ConsultationID":"','ConsultationID: '
+              // 2) mark object boundaries BEFORE removing braces
+              '},{','§§SEP§§'
             ),
-            '","Error":"', concat(decodeUriComponent('%0D%0A'),'Error: ')
+            // 3) label fields (add separator before each object)
+            '{"ConsultationID":"',
+            concat(
+              '------------------------------ Errorinfo ------------------------------',
+              decodeUriComponent('%0D%0A'),
+              'ConsultationID: '
+            )
           ),
-          '"}',''
+          '","Error":"',
+          concat(decodeUriComponent('%0D%0A'),'Error: ')
         ),
-        '"',''
+        // 4) now remove the trailing `"}`
+        '"}',''
       ),
-      '§§', concat(decodeUriComponent('%0D%0A'),decodeUriComponent('%0D%0A'))
-    )
+      // 5) clear remaining quotes
+      '"',''
+    ),
+    // 6) turn separators into blank line + header again
+    '§§SEP§§',
+    concat(decodeUriComponent('%0D%0A'),decodeUriComponent('%0D%0A'),
+           '------------------------------ Errorinfo ------------------------------',
+           decodeUriComponent('%0D%0A'))
   )
 )
